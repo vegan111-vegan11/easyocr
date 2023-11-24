@@ -1,0 +1,13 @@
+model:
+  backbone: resnet
+  prediction: CTC
+  input_size: 256
+  output_size: 80
+
+data_loader:
+  lmdb:
+    batch_size: 32
+    split: test
+    data_filtering_off: True
+    char_file_list: "./data/test/thdata/gt.txt"
+    image_folder: "./data/test/thdata"

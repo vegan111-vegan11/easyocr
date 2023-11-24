@@ -1,0 +1,35 @@
+test:
+  data:
+    data_dir: C:/Users/TAMSystech/yjh/ipynb/deep-text-recognition-benchmark/custom/en_sample  # 이미지 폴더 경로 (en_sample 폴더)
+  loader:
+    batch_size: 64
+    workers: 4
+  convert:
+    input_channel: 3
+    mean: 0.5, 0.5, 0.5
+    std: 0.5, 0.5, 0.5
+    character: 0123456789abcdefghijklmnopqrstuvwxyz
+  model:
+    architecture: CRNN
+    num_fiducial: 20
+    input_channel: 1
+    hidden_size: 256
+    backbone: resnet
+  sensitive: False
+  filter_character: False
+  transformation:
+    position: 0
+    rotation: 0
+    num_input_channels: 1
+  sequence_modeling:
+    num_of_characters: 37
+    hidden_size: 256
+  prediction:
+    num_of_characters: 37
+
+path:
+  log: ./saved_models/
+  show: C:/Users/TAMSystech/yjh/ipynb/deep-text-recognition-benchmark/custom/en_sample  # 이미지 폴더 경로 (en_sample 폴더)
+
+testing:
+  model: C:/Users/TAMSystech/yjh/ipynb/deep-text-recognition-benchmark/custom/english_g2.pth  # 훈련된 모델 파일 경로
