@@ -1,0 +1,8 @@
+imgH: 102
+lang_list: ['th', 'en']
+character_list: ' ()+-./01234569ACDFGILQSTWabeghimnoprstuz~°กขคงจฉชซฑณดตถทธนบปผฝพฟภมยรลวศษสหฬอะัาำิีึืุูเแโใไๆ็่้๊์✓'
+network_params:
+  input_channel: 1
+  output_channel: 512
+  hidden_size: 256
+ 

@@ -11,10 +11,16 @@ from dataset import RawDataset, AlignCollate
 from model import Model
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py device : {device}')
+
 
 def demo(opt):
     """ model configuration """
     if 'CTC' in opt.Prediction:
+
+        print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py opt : {opt}')
+
+
         converter = CTCLabelConverter(opt.character)
     else:
         converter = AttnLabelConverter(opt.character)
@@ -23,14 +29,35 @@ def demo(opt):
     if opt.rgb:
         opt.input_channel = 3
     model = Model(opt)
+    print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py load_state_dict 함수 호출전 saved_model 경로 모델 구조 : {model}')
+
+    #opt.saved_model = ''
     print('model input parameters', opt.imgH, opt.imgW, opt.num_fiducial, opt.input_channel, opt.output_channel,
           opt.hidden_size, opt.num_class, opt.batch_max_length, opt.Transformation, opt.FeatureExtraction,
           opt.SequenceModeling, opt.Prediction)
-    model = torch.nn.DataParallel(model).to(device)
+    #model = torch.nn.DataParallel(model).to(device)
+
+
 
     # load model
     print('loading pretrained model from %s' % opt.saved_model)
-    model.load_state_dict(torch.load(opt.saved_model, map_location=device))
+
+    print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py load_state_dict 함수 호출전 opt : {opt}')
+    print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py load_state_dict 함수 호출전 opt.saved_model : {opt.saved_model}')
+    #print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py load_state_dict 함수 호출전 opt : {opt}')
+    #print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py load_state_dict 함수 호출전 torch.load(opt.saved_model, map_location=device) : {torch.load(opt.saved_model, map_location=device)}')
+
+    # model = torch.nn.DataParallel(model).to(device)
+    model = torch.nn.DataParallel(model, device_ids=None)
+
+
+    #model.load_state_dict(torch.load(opt.saved_model, map_location=device))
+
+    # model = torch.nn.DataParallel(model, device_ids=None)
+    # state_dict = torch.load(opt.saved_model, map_location=device)
+    # # 키에서 "module." 접두사 제거
+    # state_dict = {k.replace('module.', ''): v for k, v in state_dict.items()}
+    # model.load_state_dict(state_dict)
 
     # prepare data. two demo images from https://github.com/bgshih/crnn#run-demo
     AlignCollate_demo = AlignCollate(imgH=opt.imgH, imgW=opt.imgW, keep_ratio_with_pad=opt.PAD)
@@ -45,20 +72,38 @@ def demo(opt):
     model.eval()
     with torch.no_grad():
         for image_tensors, image_path_list in demo_loader:
+
+            #ㅃprint(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py image_tensors : {image_tensors}')
+
+            #print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py image_path_list : {image_path_list}')
+
+
             batch_size = image_tensors.size(0)
             image = image_tensors.to(device)
+            #print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py image : {image}')
             # For max length prediction
             length_for_pred = torch.IntTensor([opt.batch_max_length] * batch_size).to(device)
             text_for_pred = torch.LongTensor(batch_size, opt.batch_max_length + 1).fill_(0).to(device)
 
+            #print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py length_for_pred : {length_for_pred}')
+            #print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py text_for_pred : {text_for_pred}')
+
             if 'CTC' in opt.Prediction:
                 preds = model(image, text_for_pred)
+
+                #print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py preds : {preds}')
 
                 # Select max probabilty (greedy decoding) then decode index to character
                 preds_size = torch.IntTensor([preds.size(1)] * batch_size)
                 _, preds_index = preds.max(2)
+
+                #print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py preds_size : {preds_size}')
+                #print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py preds_index : {preds_index}')
+
                 # preds_index = preds_index.view(-1)
                 preds_str = converter.decode(preds_index, preds_size)
+
+                #print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py preds_str : {preds_str}')
 
             else:
                 preds = model(image, text_for_pred, is_train=False)
@@ -68,7 +113,9 @@ def demo(opt):
                 preds_str = converter.decode(preds_index, length_for_pred)
 
 
-            log = open(f'./log_demo_result.txt', 'a')
+            #log = open(f'./log_demo_result.txt', 'a')
+            log = open('./log_demo_result.txt', 'a', encoding='utf-8')
+
             dashed_line = '-' * 80
             head = f'{"image_path":25s}\t{"predicted_labels":25s}\tconfidence score'
             
@@ -83,11 +130,30 @@ def demo(opt):
                     pred = pred[:pred_EOS]  # prune after "end of sentence" token ([s])
                     pred_max_prob = pred_max_prob[:pred_EOS]
 
+                # print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py img_name : {img_name}')
+                # print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py pred : {pred}')
+                # print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py pred_max_prob : {pred_max_prob}')
+
+
                 # calculate confidence score (= multiply of pred_max_prob)
                 confidence_score = pred_max_prob.cumprod(dim=0)[-1]
 
+                #print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py confidence_score : {confidence_score}')
+
+
                 print(f'{img_name:25s}\t{pred:25s}\t{confidence_score:0.4f}')
-                log.write(f'{img_name:25s}\t{pred:25s}\t{confidence_score:0.4f}\n')
+                #log.write(f'{img_name:25s}\t{pred:25s}\t{confidence_score:0.4f}\n')
+
+                print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py 인코딩 유티에프로 img_name : {img_name}')
+
+
+                log.write(
+                    f'{img_name:25s}\t{pred:25s}\t{confidence_score:0.4f}\n'.encode('utf-8', errors='replace').decode(
+                        'utf-8'))
+
+                # print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py img_name : {img_name}')
+                # print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py pred : {pred}')
+                # print(f'!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!demo.py confidence_score : {confidence_score}')
 
             log.close()
 
@@ -102,7 +168,10 @@ if __name__ == '__main__':
     parser.add_argument('--imgH', type=int, default=32, help='the height of the input image')
     parser.add_argument('--imgW', type=int, default=100, help='the width of the input image')
     parser.add_argument('--rgb', action='store_true', help='use rgb input')
-    parser.add_argument('--character', type=str, default='0123456789abcdefghijklmnopqrstuvwxyz', help='character label')
+    #parser.add_argument('--character', type=str, default='0123456789abcdefghijklmnopqrstuvwxyz', help='character label')
+    parser.add_argument('--character', type=str,
+                        default=' ()+-./01234569ACDFGILQSTWabeghimnoprstuz~°กขคงจฉชซฑณดตถทธนบปผฝพฟภมยรลวศษสหฬอะัาำิีึืุูเแโใไๆ็่้๊์✓',
+                        help='character label')
     parser.add_argument('--sensitive', action='store_true', help='for sensitive character mode')
     parser.add_argument('--PAD', action='store_true', help='whether to keep ratio then pad for image resize')
     """ Model Architecture """
@@ -115,6 +184,7 @@ if __name__ == '__main__':
     parser.add_argument('--output_channel', type=int, default=512,
                         help='the number of output channel of Feature extractor')
     parser.add_argument('--hidden_size', type=int, default=256, help='the size of the LSTM hidden state')
+    parser.add_argument('--strict', type=str, default='False', help='strict')
 
     opt = parser.parse_args()
 
